@@ -19,8 +19,10 @@ set -eo pipefail
 # ---------------------------------------------------------------------------
 
 # WAN_IFACE: The PPPoE interface created by UniFi for your CenturyLink WAN.
-# Typically ppp0 or ppp2. Check with: ip link show | grep ppp
-WAN_IFACE="ppp2"
+# PPPoE: typically ppp0 or ppp2. Check with: ip link show | grep ppp
+# Physical ethernet WAN (no PPPoE): use the ethernet interface, e.g. eth4
+# You can inspect `ifconfig` output on your gateway to verify the interface with a public IPv4 address.
+WAN_IFACE="ppp0"
 
 # LAN_BRIDGES: Space-separated list of LAN bridge interfaces to assign IPv6
 # prefixes and enable router advertisement on.
@@ -278,7 +280,7 @@ deploy_dnsmasq() {
         log "dnsmasq config unchanged"
     fi
 
-    # Kill only the main dnsmasq instance (leaves ppp2 and others alone)
+    # Kill only the main dnsmasq instance (leaves ppp2/other instances alone)
     if [ -f /run/dnsmasq-main.pid ]; then
         kill "$(cat /run/dnsmasq-main.pid)" 2>/dev/null || true
     else

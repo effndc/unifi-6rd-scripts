@@ -39,7 +39,7 @@ forwards them to the IPv6 internet.
 
 - UniFi OS firmware **2.x or later** (`/data` persistent storage)
 - UniFi Network app **9.3.29 or later** (uses `/run/dnsmasq.dhcp.conf.d/`)
-- CenturyLink **residential PPPoE** WAN (WAN interface will be `ppp0` or `ppp2`)
+- CenturyLink **residential PPPoE** WAN (WAN interface will be `ppp0` or `ppp2`; physical ethernet WAN without PPPoE may use `eth4` or similar)
 - IPv6 disabled in the UniFi UI for the WAN interface (no `odhcp6c` conflict)
 - Install [UniFi OS Utilities on-boot-script-2.x](https://github.com/unifi-utilities/unifios-utilities/tree/main/on-boot-script-2.x) — provides the `/data/on_boot.d/` hook that runs scripts after each boot
 
@@ -65,13 +65,14 @@ before deploying.
 
 **`WAN_IFACE`** — The PPPoE interface for your CenturyLink WAN connection.
 ```bash
-WAN_IFACE="ppp2"
+WAN_IFACE="ppp0"
 ```
 To find the correct interface name on your device:
 ```bash
 ip link show | grep ppp
 ```
 Common values are `ppp0` or `ppp2` depending on your UniFi OS version.
+For a physical ethernet WAN without PPPoE, use the ethernet interface directly (e.g. `eth4`).
 
 **`LAN_BRIDGES`** — Space-separated list of LAN bridge interfaces to assign
 IPv6 and enable router advertisement on. Each bridge gets its own `/64`
@@ -143,8 +144,8 @@ chmod +x /data/on_boot.d/99-centurylink-6rd.sh
 You should see output like:
 ```
 [6rd-boot] Starting CenturyLink 6rd configuration
-[6rd-boot] Waiting for ppp2 to come up (timeout: 120s)
-[6rd-boot] ppp2 is up: 198.51.100.1
+[6rd-boot] Waiting for ppp0 to come up (timeout: 120s)
+[6rd-boot] ppp0 is up: 198.51.100.1
 [6rd-setup] WAN IP:          198.51.100.1
 [6rd-setup] 6rd /64 (LAN 0): 2602:c6:6464:100::/64
 [6rd-setup] Tunnel 6rd-wan up, routes installed

@@ -1,6 +1,6 @@
 #!/bin/bash
 # 99-centurylink-6rd.sh
-# UniFi OS on_boot.d hook — runs at boot, waits for ppp2, sets up 6rd tunnel,
+# UniFi OS on_boot.d hook — runs at boot, waits for WAN_IFACE, sets up 6rd tunnel,
 # then monitors for WAN IP changes and re-configures the tunnel if they occur.
 #
 # Install:
@@ -15,7 +15,7 @@ WAN_IFACE="ppp0"
 SETUP_SCRIPT="/data/centurylink-6rd/centurylink-6rd-setup.sh"
 STATE_FILE="/run/centurylink-6rd.wan-ip"
 WATCHDOG_INTERVAL=60   # seconds between IP change checks
-BOOT_WAIT_TIMEOUT=120  # seconds to wait for ppp2 on boot
+BOOT_WAIT_TIMEOUT=120  # seconds to wait for WAN_IFACE on boot
 BOOT_WAIT_INTERVAL=5
 
 log()  { echo "[6rd-boot] $*" >&2; }
@@ -109,7 +109,7 @@ watchdog_loop() {
 main() {
     log "Starting CenturyLink 6rd configuration"
 
-    # Wait for ppp to come up with an IPv4
+    # Wait for WAN_IFACE to come up with an IPv4
     local wan_ip
     wan_ip=$(wait_for_wan) || {
         err "Cannot proceed without WAN IP — exiting"
