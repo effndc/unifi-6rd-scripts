@@ -2,9 +2,14 @@
 
 IPv6 via CenturyLink 6rd on UniFi OS (UDM Pro / UDM SE / Dream Machine).
 
-CenturyLink residential does not provide native IPv6. Instead they offer [6rd (RFC 5969)](https://www.rfc-editor.org/rfc/rfc5969), which tunnels IPv6 over your existing IPv4 PPPoE connection. Your IPv6 prefix is derived deterministically from your WAN IPv4 address, so no DHCPv6 is involved.
+CenturyLink residential does not provide native IPv6. Instead they offer
+[6rd (RFC 5969)](https://www.rfc-editor.org/rfc/rfc5969), which tunnels IPv6
+over your existing IPv4 PPPoE connection. Your IPv6 prefix is derived
+deterministically from your WAN IPv4 address, so no DHCPv6 is involved.
 
-These scripts create and maintain the 6rd tunnel, assign a `/64` to your LAN bridge(s), and configure dnsmasq to advertise IPv6 prefixes and DNS to LAN clients via SLAAC/RA.
+These scripts create and maintain the 6rd tunnel, assign a `/64` to your LAN
+bridge(s), and configure dnsmasq to advertise IPv6 prefixes and DNS to LAN
+clients via SLAAC/RA.
 
 ---
 
@@ -15,13 +20,13 @@ CenturyLink's 6rd parameters (residential):
 | Parameter | Value |
 |---|---|
 | 6rd prefix | `2602::/24` |
-| Border Relays | `205.171.2.64`, `205.171.3.64` |
+| Border Relay | `205.171.2.64` |
 | IPv4 mask length | `0` (full WAN IPv4 embedded) |
 | Delegation | `/56` per subscriber |
 
 Your `/56` is derived by embedding your WAN IPv4 into bits 24–55 of `2602::/24`.
-For example, WAN IP `63.224.252.40` produces `2602:3f:e0fc:2800::/56`, and the
-first LAN `/64` is `2602:3f:e0fc:2800::/64`. This recalculates automatically
+For example, WAN IP `198.51.100.1` produces `2602:c6:6464:100::/56`, and the
+first LAN `/64` is `2602:c6:6464:100::/64`. This recalculates automatically
 if your PPPoE session renews and your IP changes.
 
 The tunnel is a `sit` (Simple Internet Tunnel) interface. Outbound IPv6 packets
@@ -33,20 +38,12 @@ forwards them to the IPv6 internet.
 ## Requirements
 
 - UniFi OS firmware **2.x or later** (`/data` persistent storage)
-
 - UniFi Network app **9.3.29 or later** (uses `/run/dnsmasq.dhcp.conf.d/`)
-
-- Internet service configured via GUI with VLAN 201 and PPPoE credentials
-
 - CenturyLink **residential PPPoE** WAN (WAN interface will be `ppp0` or `ppp2`)
-
 - IPv6 disabled in the UniFi UI for the WAN interface (no `odhcp6c` conflict)
+- Install [UniFi OS Utilities on-boot-script-2.x](https://github.com/unifi-utilities/unifios-utilities/tree/main/on-boot-script-2.x) — provides the `/data/on_boot.d/` hook that runs scripts after each boot
 
-- Install [Unifi OS Utilities on-boot-script-2.x](https://github.com/unifi-utilities/unifios-utilities/tree/main/on-boot-script-2.x) from their repo 
-
-  
-
-> **Tested on:** UDM firmware 5.0.16, UniFi Network 9.x with a Cloud Gateway Fiber
+> **Tested on:** UDM firmware 5.0.16, UniFi Network 9.x
 
 ---
 
@@ -67,16 +64,14 @@ before deploying.
 ### Variables you must review
 
 **`WAN_IFACE`** — The PPPoE interface for your CenturyLink WAN connection.
-
 ```bash
-WAN_IFACE="ppp0"
+WAN_IFACE="ppp2"
 ```
 To find the correct interface name on your device:
-
 ```bash
 ip link show | grep ppp
 ```
-Common values are `ppp0` or `ppp2` depending on your UniFi OS version.  You may need to run `ifconfig | grep ppp` to find the correct value.
+Common values are `ppp0` or `ppp2` depending on your UniFi OS version.
 
 **`LAN_BRIDGES`** — Space-separated list of LAN bridge interfaces to assign
 IPv6 and enable router advertisement on. Each bridge gets its own `/64`
@@ -109,8 +104,7 @@ DOMAIN="example.invalid"   # replace with your local domain if desired
 |---|---|---|
 | `SIT_IFACE` | `6rd-wan` | Name of the tunnel interface |
 | `SIT_TTL` | `64` | TTL for encapsulated packets |
-| `BR_PRIMARY` | `205.171.2.64` | CenturyLink primary Border Relay |
-| `BR_SECONDARY` | `205.171.3.64` | CenturyLink secondary Border Relay |
+| `BR_PRIMARY` | `205.171.2.64` | CenturyLink Border Relay (only one verified) |
 | `SIXRD_PREFIX` | `2602::` | CenturyLink 6rd IPv6 base prefix |
 | `SIXRD_PREFIX_LEN` | `24` | 6rd prefix length |
 | `CONF_DIR` | `/data/centurylink-6rd` | Persistent config storage |
@@ -127,7 +121,7 @@ UniFi's `odhcp6c` DHCPv6 client is running it will conflict with the tunnel.
 **2. Copy files to the device**
 
 ```bash
-# From your local machine (you may need to pre-create directories in /data/)
+# From your local machine
 scp centurylink-6rd-setup.sh root@<udm-ip>:/data/centurylink-6rd/
 scp 99-centurylink-6rd.sh root@<udm-ip>:/data/on_boot.d/
 ```
@@ -150,15 +144,15 @@ You should see output like:
 ```
 [6rd-boot] Starting CenturyLink 6rd configuration
 [6rd-boot] Waiting for ppp2 to come up (timeout: 120s)
-[6rd-boot] ppp2 is up: 63.224.99.99
-[6rd-setup] WAN IP:          63.224.99.99
-[6rd-setup] 6rd /64 (LAN 0): 2602:3fe0.6363::/48
+[6rd-boot] ppp2 is up: 198.51.100.1
+[6rd-setup] WAN IP:          198.51.100.1
+[6rd-setup] 6rd /64 (LAN 0): 2602:c6:6464:100::/64
 [6rd-setup] Tunnel 6rd-wan up, routes installed
-[6rd-setup] Assigned 2602:3f:e0fc.6363::1/64 to br0
+[6rd-setup] Assigned 2602:c6:6464:100::1/64 to br0
 [6rd-setup] dnsmasq config deployed to /run/dnsmasq.dhcp.conf.d/centurylink-6rd.conf
 [6rd-setup] dnsmasq restarted
 [6rd-setup] 6rd setup complete
-[6rd-boot] Setup succeeded for IP 63.224.99.99
+[6rd-boot] Setup succeeded for IP 198.51.100.1
 [6rd-boot] Starting watchdog (interval: 60s)
 ```
 
@@ -243,7 +237,7 @@ a direct connection to verify.
 
 If you want to verify the prefix calculation for a given WAN IP:
 ```bash
-WAN_IP="63.224.99.99"
+WAN_IP="198.51.100.1"
 IFS='.' read -r a b c d <<< "$WAN_IP"
 printf "2602:%x:%x%x:%x00::/64\n" \
     "$a" "$b" "$c" "$d"

@@ -20,7 +20,7 @@ set -eo pipefail
 
 # WAN_IFACE: The PPPoE interface created by UniFi for your CenturyLink WAN.
 # Typically ppp0 or ppp2. Check with: ip link show | grep ppp
-WAN_IFACE="ppp0"
+WAN_IFACE="ppp2"
 
 # LAN_BRIDGES: Space-separated list of LAN bridge interfaces to assign IPv6
 # prefixes and enable router advertisement on.
@@ -50,10 +50,11 @@ SIT_IFACE="6rd-wan"
 # SIT_TTL: TTL for encapsulated packets. 64 is standard.
 SIT_TTL=64
 
-# BR_PRIMARY / BR_SECONDARY: CenturyLink 6rd Border Relay addresses.
-# These are the anycast relays that forward 6rd traffic to the IPv6 internet.
+# BR_PRIMARY: CenturyLink 6rd Border Relay address.
+# Forwards encapsulated IPv6 traffic to the IPv6 internet.
+# Source: CenturyLink modem documentation and multiple independent community sources.
+# No secondary BR has been verified in any primary source.
 BR_PRIMARY="205.171.2.64"
-BR_SECONDARY="205.171.3.64"
 
 # SIXRD_PREFIX / SIXRD_PREFIX_LEN: CenturyLink's 6rd IPv6 prefix.
 # Your /56 is derived by embedding your WAN IPv4 into bits 24-55 of this prefix.
@@ -217,8 +218,7 @@ setup_tunnel() {
     ip addr add "${tunnel_addr}" dev "${SIT_IFACE}" || true
 
     # Default IPv6 route via both BRs (primary preferred, secondary fallback)
-    ip -6 route add ::/0 via "::${BR_PRIMARY}"   dev "${SIT_IFACE}" metric 1 || true
-    ip -6 route add ::/0 via "::${BR_SECONDARY}" dev "${SIT_IFACE}" metric 2 || true
+    ip -6 route add ::/0 via "::${BR_PRIMARY}" dev "${SIT_IFACE}" || true
 
     log "Tunnel ${SIT_IFACE} up, routes installed"
 
@@ -278,7 +278,7 @@ deploy_dnsmasq() {
         log "dnsmasq config unchanged"
     fi
 
-    # Kill only the main dnsmasq instance (leaves ppp0 and others alone)
+    # Kill only the main dnsmasq instance (leaves ppp2 and others alone)
     if [ -f /run/dnsmasq-main.pid ]; then
         kill "$(cat /run/dnsmasq-main.pid)" 2>/dev/null || true
     else
