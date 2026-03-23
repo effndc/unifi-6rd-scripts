@@ -119,17 +119,33 @@ DOMAIN="example.invalid"   # replace with your local domain if desired
 Go to Settings → Internet → your WAN → IPv6 and set it to disabled. If
 UniFi's `odhcp6c` DHCPv6 client is running it will conflict with the tunnel.
 
-**2. Copy files to the device**
+**2. Install the scripts**
+
+**Option A — curl (recommended)**
+
+SSH into the router and run:
 
 ```bash
-# From your local machine
-scp centurylink-6rd-setup.sh root@<udm-ip>:/data/centurylink-6rd/
-scp 99-centurylink-6rd.sh root@<udm-ip>:/data/on_boot.d/
+ssh root@<udm-ip>
+
+mkdir -p /data/on_boot.d /data/centurylink-6rd
+
+curl https://raw.githubusercontent.com/effndc/unifi-6rd-scripts/refs/heads/main/99-centurylink-6rd.sh \
+    -o /data/on_boot.d/99-centurylink-6rd.sh
+
+curl https://raw.githubusercontent.com/effndc/unifi-6rd-scripts/refs/heads/main/centurylink-6rd-setup.sh \
+    -o /data/centurylink-6rd/centurylink-6rd-setup.sh
+
+chmod +x /data/on_boot.d/99-centurylink-6rd.sh
+chmod +x /data/centurylink-6rd/centurylink-6rd-setup.sh
 ```
 
-**3. Set permissions**
+**Option B — scp from local machine**
 
 ```bash
+scp centurylink-6rd-setup.sh root@<udm-ip>:/data/centurylink-6rd/
+scp 99-centurylink-6rd.sh root@<udm-ip>:/data/on_boot.d/
+
 ssh root@<udm-ip>
 chmod +x /data/centurylink-6rd/centurylink-6rd-setup.sh
 chmod +x /data/on_boot.d/99-centurylink-6rd.sh
