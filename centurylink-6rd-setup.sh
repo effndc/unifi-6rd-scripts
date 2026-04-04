@@ -21,7 +21,6 @@ set -eo pipefail
 # WAN_IFACE: The PPPoE interface created by UniFi for your CenturyLink WAN.
 # PPPoE: typically ppp0 or ppp2. Check with: ip link show | grep ppp
 # Physical ethernet WAN (no PPPoE): use the ethernet interface, e.g. eth4
-# You can inspect `ifconfig` output on your gateway to verify the interface with a public IPv4 address.
 WAN_IFACE="ppp0"
 
 # LAN_BRIDGES: Space-separated list of LAN bridge interfaces to assign IPv6

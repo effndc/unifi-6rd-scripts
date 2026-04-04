@@ -45,13 +45,18 @@ forwards them to the IPv6 internet.
 
 > **Tested on:** UDM firmware 5.0.16, UniFi Network 9.x
 
+> **Important:** The boot hook must be executable (`chmod +x`). The `on_boot.d`
+> runner sources `.sh` files that lack the execute bit, which causes this script
+> to loop infinitely. Always verify permissions after installing.
+
 ---
 
 ## Files
 
 ```
-99-centurylink-6rd.sh        # Boot hook + WAN IP change watchdog
-centurylink-6rd-setup.sh     # Tunnel creation and dnsmasq RA configuration
+99-centurylink-6rd.sh           # Boot hook: waits for WAN, runs setup, launches watchdog
+centurylink-6rd-setup.sh        # Tunnel creation and dnsmasq RA configuration
+centurylink-6rd-watchdog.sh     # WAN IP change watchdog (launched by boot hook via nohup)
 ```
 
 ---
@@ -136,20 +141,35 @@ curl https://raw.githubusercontent.com/effndc/unifi-6rd-scripts/refs/heads/main/
 curl https://raw.githubusercontent.com/effndc/unifi-6rd-scripts/refs/heads/main/centurylink-6rd-setup.sh \
     -o /data/centurylink-6rd/centurylink-6rd-setup.sh
 
+curl https://raw.githubusercontent.com/effndc/unifi-6rd-scripts/refs/heads/main/centurylink-6rd-watchdog.sh \
+    -o /data/centurylink-6rd/centurylink-6rd-watchdog.sh
+
 chmod +x /data/on_boot.d/99-centurylink-6rd.sh
 chmod +x /data/centurylink-6rd/centurylink-6rd-setup.sh
+chmod +x /data/centurylink-6rd/centurylink-6rd-watchdog.sh
 ```
 
 **Option B — scp from local machine**
 
 ```bash
-scp centurylink-6rd-setup.sh root@<udm-ip>:/data/centurylink-6rd/
 scp 99-centurylink-6rd.sh root@<udm-ip>:/data/on_boot.d/
+scp centurylink-6rd-setup.sh root@<udm-ip>:/data/centurylink-6rd/
+scp centurylink-6rd-watchdog.sh root@<udm-ip>:/data/centurylink-6rd/
 
 ssh root@<udm-ip>
-chmod +x /data/centurylink-6rd/centurylink-6rd-setup.sh
 chmod +x /data/on_boot.d/99-centurylink-6rd.sh
+chmod +x /data/centurylink-6rd/centurylink-6rd-setup.sh
+chmod +x /data/centurylink-6rd/centurylink-6rd-watchdog.sh
 ```
+
+**3. Edit configuration**
+
+Open `/data/centurylink-6rd/centurylink-6rd-setup.sh` and set `WAN_IFACE`,
+`LAN_BRIDGES`, and `DNS6` for your environment.
+
+> **Note:** `WAN_IFACE` appears in all three scripts and must be set to the
+> same value in each: `99-centurylink-6rd.sh`, `centurylink-6rd-setup.sh`,
+> and `centurylink-6rd-watchdog.sh`.
 
 **4. Run the boot hook manually to test**
 
@@ -170,12 +190,16 @@ You should see output like:
 [6rd-setup] dnsmasq restarted
 [6rd-setup] 6rd setup complete
 [6rd-boot] Setup succeeded for IP 198.51.100.1
-[6rd-boot] Starting watchdog (interval: 60s)
+[6rd-boot] Launching watchdog
+[6rd-boot] Watchdog launched (pid 1234), log: /var/log/centurylink-6rd-watchdog.log
 ```
 
-The script will continue running in the foreground as the watchdog. On
-subsequent boots UniFi OS runs it in the background automatically via
-`on_boot.d`.
+The script exits after launching the watchdog. UniFi OS will then continue its
+normal boot sequence. To check the watchdog is running:
+```bash
+cat /run/centurylink-6rd-watchdog.pid | xargs ps -p
+cat /var/log/centurylink-6rd-watchdog.log
+```
 
 ---
 
@@ -219,11 +243,12 @@ ipconfig | findstr 2602
 
 ## How the watchdog works
 
-The boot hook (`99-centurylink-6rd.sh`) stays running after initial setup and
-polls the WAN IP every 60 seconds. If the IP changes — which happens when
-CenturyLink renews your PPPoE session — it tears down the existing tunnel and
-rebuilds it with the new IP and recalculated prefix. Without this, IPv6 would
-silently break after a session renewal until the next reboot.
+After initial setup the boot hook launches `centurylink-6rd-watchdog.sh` as an
+independent `nohup` process and exits. The watchdog polls the WAN IP every 60
+seconds. If the IP changes — which happens when CenturyLink renews your PPPoE
+session — it tears down the existing tunnel and rebuilds it with the new IP and
+recalculated prefix. Without this, IPv6 would silently break after a session
+renewal until the next reboot.
 
 ---
 
